@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <title>Exploration</title>
+
+    <!-- Bootstrap -->
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <style>
+
+      .group text {
+        font: 10px sans-serif;
+      }
+
+      .chord {
+        fill-opacity: .67;
+      }
+
+      </style>
+  </head>
+  <body>
+  <div class="container">
+    <div class="row">
+      <div class="col-md-12">
+        <h1>Chord</h1>
+      </div>
+      <label class="col-md-1 text-right">Year: </label>
+      <div class="col-md-11">
+        <select class="form-control" id=year>
+           <option value="1990" selected="selected">1990</option>
+           <option value="1995">1995</option>
+           <option value="2000">2000</option>
+           <option value="2005">2005</option>
+           <option value="2010">2010</option>
+           <option value="2015">2015</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <div id="chart"></div>
+      </div>
+    </div>
+  </div>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://d3js.org/d3.v3.min.js"></script>
+    <script>
+
+        $(document).ready(function(){
+          $('#year').on('change',function(){
+            $('#chart').html('');
+            renderChart(this.value);
+          });
+          renderChart(1990);
+        });
+
+        function renderChart(year){
+          var outerRadius = 960 / 2,
+            innerRadius = outerRadius - 130;
+
+          var fill = d3.scale.category20c();
+
+          var chord = d3.layout.chord()
+              .padding(.04)
+              .sortSubgroups(d3.descending)
+              .sortChords(d3.descending);
+
+          var arc = d3.svg.arc()
+              .innerRadius(innerRadius)
+              .outerRadius(innerRadius + 20);
+
+          var svg = d3.select("#chart").append("svg")
+              .attr("width", outerRadius * 2)
+              .attr("height", outerRadius * 2)
+              .append("g")
+              .attr("transform", "translate(" + outerRadius + "," + outerRadius + ")");
+
+          d3.csv("../matrices-oea/all.csv", function(error, imports) {
+            if (error) throw error;
+
+            imports = imports.filter(function(a){return parseInt(a.periodo)==year}).sort(function(a,b){return (a.Destination>b.Destination)?1:-1});
+
+          /*  imports = d3.nest()
+                        .key(function(d) { return d.origin; })
+                        .rollup(function(leaves) { return leaves.sort(function(a,b){return (a.destination>b.destination)?1:-1}); })
+                        .entries(imports.sort(function(a,b){return (a.origin>b.origin)?1:-1}));*/
+
+
+            var indexByName = d3.map(),
+                nameByIndex = d3.map(),
+                matrix = [],
+                n = 0;
+
+            // Compute a unique index for each package name.
+            imports.forEach(function(d) {
+              if (!indexByName.has(d = d.Destination)) {
+                nameByIndex.set(n, d);
+                indexByName.set(d, n++);
+              }
+            });
+
+            // Construct a square matrix counting package imports.
+            imports.forEach(function(d) {
+              var source = indexByName.get(d.Destination),
+                  row = matrix[source];
+              
+              if (!row) {
+                row = matrix[source] = [];
+                for (var i = -1; ++i < n;){
+                  row[i] = 0;
+                }
+              }
+              
+              nameByIndex.forEach(function(ix,val) { 
+                row[ix] = (d[val])?parseInt(d[val]):0; 
+              });
+            });
+
+            chord.matrix(matrix);
+
+            var g = svg.selectAll(".group")
+                .data(chord.groups)
+                .enter().append("g")
+                .attr("class", "group");
+
+            g.append("path")
+                .style("fill", function(d) { return fill(d.index); })
+                .style("stroke", function(d) { return fill(d.index); })
+                .attr("d", arc);
+
+            g.append("text")
+                .each(function(d) { d.angle = (d.startAngle + d.endAngle) / 2; })
+                .attr("dy", ".35em")
+                .attr("transform", function(d) {
+                  return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")"
+                      + "translate(" + (innerRadius + 26) + ")"
+                      + (d.angle > Math.PI ? "rotate(180)" : "");
+                })
+                .style("text-anchor", function(d) { return d.angle > Math.PI ? "end" : null; })
+                .text(function(d) { return nameByIndex.get(d.index); });
+
+            svg.selectAll(".chord")
+                .data(chord.chords)
+                .enter()
+                .append("path")
+                .attr("class", "chord")
+                .style("stroke", function(d) { return d3.rgb(fill(d.source.index)).darker(); })
+                .style("fill", function(d) { return fill(d.source.index); })
+                .attr("d", d3.svg.chord().radius(innerRadius));
+
+          });
+
+        }
+
+
+
+        </script>
+  </body>
+</html>
