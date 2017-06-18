@@ -73,30 +73,36 @@
         d3.csv("../dataset.csv", function(error, rows) {
             if (error) throw error;
 
+            rows = rows.sort(function(a,b){return (a.origin>b.origin)?1:-1});
+
             //imports = imports.sort(function(a,b){return (a.Destination>b.Destination)?1:-1});
             var rowsOrigin = d3.nest()
                         .key(function(d) { return d.origin; })
                         .key(function(d) { return d.year; })
                         .rollup(function(leaves) { 
-                          return leaves.reduce(function(total,d){return parseInt(d.qty);},0); 
+                          console.log(leaves);
+                          console.log(leaves.reduce(function(total,d){return total+parseInt(d.qty);},0));
+                          return leaves.reduce(function(total,d){return total+parseInt(d.qty);},0); 
                         })
-                        .entries(rows.sort(function(a,b){return (a.origin>b.origin)?1:-1}));
+                        .entries(rows);
 
-            renderMainChart(rowsOrigin,'origin');
+            renderMainChart(rowsOrigin,'origin','steelblue');
+
+            rows = rows.sort(function(a,b){return (a.destination>b.destination)?1:-1});
 
             var rowsDestination = d3.nest()
                         .key(function(d) { return d.destination; })
                         .key(function(d) { return d.year; })
                         .rollup(function(leaves) { 
-                          return leaves.reduce(function(total,d){return parseInt(d.qty);},0); 
+                          return leaves.reduce(function(total,d){return total+parseInt(d.qty);},0); 
                         })
-                        .entries(rows.sort(function(a,b){return (a.origin>b.origin)?1:-1}));
+                        .entries(rows);
 
-            renderMainChart(rowsDestination,'destination');
+            renderMainChart(rowsDestination,'destination','orange');
         });
       }
 
-      function renderMainChart(data,side){
+      function renderMainChart(data,side,color){
         var chartData = [
                   ['x', '1990', '1995', '2000', '2005', '2010', '2015']
               ];
@@ -125,11 +131,11 @@
           }
         });
 
-        renderMiniCharts(chartData,side);
+        renderMiniCharts(chartData,side,color);
 
       }
 
-      function renderMiniCharts(data,side){
+      function renderMiniCharts(data,side,color){
 
         var $container = d3.select('#mini-charts-'+side);
 
@@ -148,7 +154,8 @@
               data: {
                   x: 'x',
                   xFormat: '%Y',
-                  columns: [data[0],d]
+                  columns: [data[0],d],
+                  color: function (col, d) { return color }
               },
               axis: {
                   x: {
@@ -156,6 +163,9 @@
                       tick: {
                           format: '%Y'
                       }
+                  },
+                  y: {
+                    min: 0
                   }
               }
             });
