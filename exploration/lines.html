@@ -80,9 +80,7 @@
                         .key(function(d) { return d.origin; })
                         .key(function(d) { return d.year; })
                         .rollup(function(leaves) { 
-                          console.log(leaves);
-                          console.log(leaves.reduce(function(total,d){return total+parseInt(d.qty);},0));
-                          return leaves.reduce(function(total,d){return total+parseInt(d.qty);},0); 
+                          return leaves.reduce(function(total,d){return total+parseInt(Number(d.qty));},0); 
                         })
                         .entries(rows);
 
@@ -94,7 +92,7 @@
                         .key(function(d) { return d.destination; })
                         .key(function(d) { return d.year; })
                         .rollup(function(leaves) { 
-                          return leaves.reduce(function(total,d){return total+parseInt(d.qty);},0); 
+                          return leaves.reduce(function(total,d){return total+parseInt(Number(d.qty));},0); 
                         })
                         .entries(rows);
 
@@ -109,6 +107,9 @@
 
         data.forEach(function(d){
           chartData.push([d.key, d.values[0].values, d.values[1].values, d.values[2].values, d.values[3].values, d.values[4].values, d.values[5].values]);
+          if(d.key=="Mexico"){
+            console.log(d);
+          }
         });
 
         c3.generate({
@@ -140,6 +141,7 @@
         var $container = d3.select('#mini-charts-'+side);
 
         data.forEach(function(d,ix){
+
           if(ix>0){
             $container
               .append('div')
